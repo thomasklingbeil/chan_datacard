@@ -2853,28 +2853,33 @@ static int dc_send_cmgs(struct dc_pvt *pvt, char *number)
 /*!
  * \brief Send the text of an SMS message.
  * \param pvt an dc_pvt struct
- * \param message the text of the message
- */
-static int dc_send_sms_text(struct dc_pvt *pvt, char *message)
-{
-	int res;
-	char *old_message = message;
-	char ucs2_message[4096];
-	char cmd[sizeof(ucs2_message) + 162];
+ * \param message the text of the message  */ static int dc_send_sms_text(struct dc_pvt *pvt, char *message) {
+        int res;
+        char *old_message = message;
+        char ucs2_message[4096];
+        char cmd[sizeof(ucs2_message) + 162];
+        char temp[2] = "ab";
+        int i;
 
-	if (pvt->use_ucs2_encoding) {
-		res = utf8_to_hexstr_ucs2(message,strlen(message),ucs2_message,sizeof(ucs2_message));
-		if (res>0) {
-			message = ucs2_message;
-		} else {
-			ast_log(LOG_ERROR, "[%s] error converting SMS to UCS-2): %s\n", pvt->id, message);
-			message = old_message;
-		}
-	}
+        if (pvt->use_ucs2_encoding) {
+                res = utf8_to_hexstr_ucs2(message,strlen(message),ucs2_message,sizeof(ucs2_message));
+                if (res>0) {
+                        message = ucs2_message;
+                } else {
+                        ast_log(LOG_ERROR, "[%s] error converting SMS to UCS-2): %s\n", pvt->id, message);
+                        message = old_message;
+                }
+        }
 
-	snprintf(cmd, sizeof(cmd), "%.160s\x1a", message);
+        snprintf(cmd, sizeof(cmd), "%.640s", message);
 
-	return rfcomm_write(pvt->data_socket, cmd);
+        i = 0;
+        while(cmd[i]) {
+                snprintf(temp, sizeof(temp), "%c", cmd[i++]);
+                rfcomm_write(pvt->data_socket, temp);
+                }
+        return rfcomm_write(pvt->data_socket, "\x1a");
+
 }
 
 /*!
